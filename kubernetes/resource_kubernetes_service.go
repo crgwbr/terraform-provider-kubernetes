@@ -176,10 +176,18 @@ func resourceKubernetesServiceCreate(d *schema.ResourceData, meta interface{}) e
 			}
 
 			return resource.RetryableError(fmt.Errorf(
-				"Waiting for load balancer %q to assign IP/hostname", d.Id()))
+				"Waiting for service %q to assign IP/hostname for a load balancer", d.Id()))
 		})
 		if err != nil {
-			return err
+			warns := ""
+			lastWarnings, wErr := getLastWarningsForObject(conn, out.ObjectMeta, "Service", 3)
+			if wErr != nil {
+				return wErr
+			}
+			if len(lastWarnings) > 0 {
+				warns = fmt.Sprintf(". Last warnings: %s", stringifyEvents(lastWarnings))
+			}
+			return fmt.Errorf("%s%s", err, warns)
 		}
 	}
 

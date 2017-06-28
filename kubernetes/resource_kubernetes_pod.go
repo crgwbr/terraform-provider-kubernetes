@@ -82,7 +82,15 @@ func resourceKubernetesPodCreate(d *schema.ResourceData, meta interface{}) error
 	}
 	_, err = stateConf.WaitForState()
 	if err != nil {
-		return err
+		warns := ""
+		lastWarnings, wErr := getLastWarningsForObject(conn, out.ObjectMeta, "Pod", 3)
+		if wErr != nil {
+			return wErr
+		}
+		if len(lastWarnings) > 0 {
+			warns = fmt.Sprintf(". Last warnings: %s", stringifyEvents(lastWarnings))
+		}
+		return fmt.Errorf("%s%s", err, warns)
 	}
 	log.Printf("[INFO] Pod %s created", out.Name)
 
